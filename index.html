@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IoT Monitoring Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-gauges/gauge.min.js"></script>
+
+<style>
+
+body{
+margin:0;
+font-family:'Poppins',sans-serif;
+background:linear-gradient(135deg,#cfe8ff,#eaf4ff);
+text-align:center;
+color:#0a1f44;
+}
+
+h1{
+margin-top:20px;
+}
+
+.container{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:30px;
+margin-top:30px;
+}
+
+.card{
+background:white;
+width:300px;
+padding:25px;
+border-radius:20px;
+box-shadow:0 10px 25px rgba(0,0,0,0.15);
+}
+
+.icon{
+font-size:30px;
+}
+
+.value{
+font-size:42px;
+font-weight:bold;
+color:#2563eb;
+text-shadow:0 0 10px rgba(37,99,235,0.3);
+}
+
+.statusbox{
+margin-top:8px;
+background:#e8f3ff;
+padding:6px 14px;
+border-radius:10px;
+display:inline-block;
+font-weight:600;
+}
+
+.chartbox{
+background:white;
+width:85%;
+margin:40px auto;
+padding:25px;
+border-radius:20px;
+box-shadow:0 10px 25px rgba(0,0,0,0.15);
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>IoT Temperature & Humidity Monitoring</h1>
+
+<!-- 🔥 TOMBOL ON OFF -->
+<div style="margin-top:20px;">
+  <button onclick="toggleSystem()" id="btnToggle" 
+  style="padding:10px 25px;font-size:16px;border:none;border-radius:10px;background:#2563eb;color:white;cursor:pointer;">
+  SYSTEM ON
+  </button>
+</div>
+
+<div class="container">
+
+<div class="card">
+<div class="icon">🌡️</div>
+<h3>Suhu DHT11</h3>
+<div class="value" id="dhtTemp">0°C</div>
+<div class="statusbox">
+Status : <span id="dhtStatus">-</span>
+</div>
+<canvas id="gaugeDHT"></canvas>
+</div>
+
+<div class="card">
+<div class="icon">🌡️</div>
+<h3>Suhu DS</h3>
+<div class="value" id="dsTemp">0°C</div>
+<div class="statusbox">
+Status : <span id="dsStatus">-</span>
+</div>
+<canvas id="gaugeDS"></canvas>
+</div>
+
+<div class="card">
+<div class="icon">💧</div>
+<h3>Kelembaban</h3>
+<div class="value" id="humidity">0%</div>
+<div class="statusbox">
+Status : <span id="humStatus">-</span>
+</div>
+<canvas id="gaugeHum"></canvas>
+</div>
+
+</div>
+
+<div class="chartbox">
+<h3>Grafik Suhu</h3>
+<canvas id="tempChart"></canvas>
+</div>
+
+<div class="chartbox">
+<h3>Grafik Kelembaban</h3>
+<canvas id="humChart"></canvas>
+</div>
+
+<script>
+
+// 🔥 STATUS SYSTEM
+let systemOn = true;
+
+function toggleSystem(){
+  systemOn = !systemOn;
+  let btn = document.getElementById("btnToggle");
+
+  if(systemOn){
+    btn.innerHTML = "SYSTEM ON";
+    btn.style.background = "#2563eb";
+  } else {
+    btn.innerHTML = "SYSTEM OFF";
+    btn.style.background = "#ef4444";
+  }
+}
+
+// GAUGE
+var gaugeDHT = new RadialGauge({
+renderTo:'gaugeDHT',
+width:250,
+height:250,
+units:'°C',
+minValue:0,
+maxValue:50,
+colorPlate:"#cfe8ff",
+colorBar:"#2563eb",
+colorNeedle:"#2563eb",
+colorNumbers:"#0a1f44",
+value:0
+}).draw();
+
+var gaugeDS = new RadialGauge({
+renderTo:'gaugeDS',
+width:250,
+height:250,
+units:'°C',
+minValue:0,
+maxValue:50,
+colorPlate:"#cfe8ff",
+colorBar:"#3b82f6",
+colorNeedle:"#2563eb",
+colorNumbers:"#0a1f44",
+value:0
+}).draw();
+
+var gaugeHum = new RadialGauge({
+renderTo:'gaugeHum',
+width:250,
+height:250,
+units:'%',
+minValue:0,
+maxValue:100,
+colorPlate:"#cfe8ff",
+colorBar:"#60a5fa",
+colorNeedle:"#2563eb",
+colorNumbers:"#0a1f44",
+value:0
+}).draw();
+
+// STATUS
+function statusSuhu(val){
+if(val < 29) return "Normal";
+else if(val < 35) return "Hangat";
+else return "Panas";
+}
+
+function statusRH(val){
+if(val < 40) return "Kering";
+else if(val <= 70) return "Normal";
+else return "Lembab";
+}
+
+// CHART
+const tempChart = new Chart(document.getElementById("tempChart"),{
+type:'line',
+data:{labels:[],datasets:[
+{label:'Suhu DHT11',data:[],borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.2)',tension:0.4,fill:true},
+{label:'Suhu DS',data:[],borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,0.2)',tension:0.4,fill:true}
+]}
+});
+
+const humChart = new Chart(document.getElementById("humChart"),{
+type:'line',
+data:{labels:[],datasets:[
+{label:'Kelembaban',data:[],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.2)',tension:0.4,fill:true}
+]}
+});
+
+// LOOP
+setInterval(function(){
+
+if(!systemOn) return;
+
+let dht = Math.floor(Math.random()*6)+27;
+let ds = Math.floor(Math.random()*6)+28;
+let hum = Math.floor(Math.random()*20)+55;
+
+gaugeDHT.value = dht;
+gaugeDS.value = ds;
+gaugeHum.value = hum;
+
+document.getElementById("dhtTemp").innerHTML = dht+"°C";
+document.getElementById("dsTemp").innerHTML = ds+"°C";
+document.getElementById("humidity").innerHTML = hum+"%";
+
+document.getElementById("dhtStatus").innerHTML = statusSuhu(dht);
+document.getElementById("dsStatus").innerHTML = statusSuhu(ds);
+document.getElementById("humStatus").innerHTML = statusRH(hum);
+
+let time = new Date().toLocaleTimeString();
+
+tempChart.data.labels.push(time);
+tempChart.data.datasets[0].data.push(dht);
+tempChart.data.datasets[1].data.push(ds);
+
+humChart.data.labels.push(time);
+humChart.data.datasets[0].data.push(hum);
+
+if(tempChart.data.labels.length>20){
+tempChart.data.labels.shift();
+tempChart.data.datasets[0].data.shift();
+tempChart.data.datasets[1].data.shift();
+}
+
+if(humChart.data.labels.length>20){
+humChart.data.labels.shift();
+humChart.data.datasets[0].data.shift();
+}
+
+tempChart.update();
+humChart.update();
+
+// 🔥 KIRIM KE GOOGLE SHEETS
+fetch(`https://script.google.com/macros/s/AKfycbxIkO_KxsqPnPOkT21-BXpbMEezltTyITRlgfsUgmi3uKvgFCtBewo63G7I0jqL3T9-rw/exec?dht=${dht}&ds=${ds}&hum=${hum}`)
+.then(res => res.text())
+.then(data => console.log("Terkirim:", data))
+.catch(err => console.error("Error:", err));
+
+},5000);
+
+</script>
+
+</body>
+</html>
